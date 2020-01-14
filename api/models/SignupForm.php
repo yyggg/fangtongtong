@@ -1,16 +1,18 @@
 <?php
 namespace api\models;
 
-use yii\base\Model;
 use api\models\User;
+use yii\base\Model;
 
 /**
  * Signup form
  */
 class SignupForm extends Model
 {
-    public $username;
-    public $password = 'a123456'; //默认密码
+    public $phone;
+    public $password;
+    public $sms_code;
+
     /**
      * 验证规则
      * @return array
@@ -18,36 +20,40 @@ class SignupForm extends Model
     public function rules()
     {
         return [
-            ['username', 'trim'],
-            ['username', 'required'],
-            ['username', 'unique'],
-            ['password', 'safe',],
+            ['phone', 'trim'],
+            [['sms_code', 'password', 'phone'], 'required'],
+            [['phone'],'match','pattern'=>'/^[1][3578][0-9]{9}$/'],
+            ['phone', 'unique', 'targetClass' => '\api\models\User', 'message' => '手机号已被注册'],
+            ['password', 'string', 'max' => 18, 'min' => 6],
+            //['agree', 'required', 'requiredValue'=>true,'message'=>'请确认是否同意隐私权协议条款'],
         ];
     }
 
 
     public function signup()
     {
-        $errMsg = ['code' => 0, 'msg' => 'OK'];
+        if (!$this->validate())
+        {
+            return false;
+        }
 
         $user = new User();
-        $user->username = $this->username;
-        $user->setPassword($this->password);
-        $user->generateAccessToken();
+        $user->phone = $this->phone;
+        $user->password = $user->setPassword($this->password);
+        if (!$user->save())
+        {
+            return false;
+        }
 
-        if($user::findOne(['username' => $this->username]))
-        {
-            $errMsg['code'] = '1005';
-            $errMsg['msg'] = '用户名已经存在';
-            return $errMsg;
-        }
-        if($user->save())
-        {
-            $errMsg['id'] = $user->getId();
-            return $errMsg;
-        }
-        $errMsg['code'] = '1004';
-        $errMsg['msg'] = '注册失败';
-        return  $errMsg['code'];
+        return true;
+    }
+
+    public function attributeLabels()
+    {
+        return [
+            'phone'    => '手机号',
+            'sms_code' => '手机验证码',
+            'password' => '密码',
+        ];
     }
 }

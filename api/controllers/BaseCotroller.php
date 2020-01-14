@@ -9,13 +9,12 @@
 namespace api\controllers;
 
 use api\models\User;
+use yii\base\Controller;
 use yii\rest\ActiveController;
 use \yii\filters\auth\HttpBearerAuth;
 
-class BaseCotroller extends ActiveController
+class BaseCotroller extends Controller
 {
-    public $modelClass = 'api\models\User';
-
     /*public function actions() {
         $actions = parent::actions();
         unset($actions['index'],$actions['delete'],$actions['update'], $actions['create'], $actions['view'], $actions['options']);

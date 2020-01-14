@@ -6,14 +6,14 @@
 
 if (! function_exists('response'))
 {
-    function response($data = [], $code = '0')
+    function response($data = [], $code = '0', $msg = '')
     {
 
         if (!$data && $code != '0')
         {
             return [
                 'errCode' => Yii::$app->params['errCode'][$code]['errCode'],
-                'errMsg' => Yii::$app->params['errCode'][$code]['errMsg']];
+                'errMsg' => $msg ? $msg : Yii::$app->params['errCode'][$code]['errMsg']];
         }
 
         return [
