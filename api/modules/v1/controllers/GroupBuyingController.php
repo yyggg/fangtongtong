@@ -10,11 +10,11 @@ use common\models\JoinGroupBuying;
 use common\models\Properties;
 use common\models\User;
 use Yii;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 use common\models\GroupBuying;
 
 
-class GroupBuyingController extends BaseCotroller
+class GroupBuyingController extends BaseController
 {
     /**
      * 获取拼团活动列表
@@ -43,6 +43,59 @@ class GroupBuyingController extends BaseCotroller
         return response($model);
     }
 
+    public function actionIndexByUser()
+    {
+        $status = Yii::$app->request->get('status', '');
+        $page = Yii::$app->request->get('page', 1);
+        $offset = ($page - 1) * Yii::$app->params['pageSize'];
+
+        $model = JoinGroupBuying::find()
+            ->alias('a')
+            ->select([
+                'a.group_buying_id', 'c.title', 'c.people','c.s_time', 'c.e_time','c.remark',
+                'd.name', 'd.pic', 'b.status', 'b.success_time'
+            ])
+            ->leftJoin(GroupBuying::tableName() . ' b', 'a.group_buying_id = b.group_buying_id')
+            ->leftJoin(GroupBuyingTpl::tableName() . ' c', 'b.group_buying_tpl_id = c.group_buying_tpl_id')
+            ->leftJoin(Properties::tableName() . ' d', 'a.properties_id = d.properties_id')
+            ->where(['a.user_id' => $this->_userId]);
+
+        if ($status == 1)
+        {
+            $model->andWhere(['>', 'c.e_time', time()]);
+            $model->andWhere(['b.status' => $status]);
+        }
+        elseif ($status == 3)
+        {
+            $model->andWhere(['<', 'c.e_time', time()]);
+            $model->andWhere(['!=', 'b.status', 2]);
+        }
+        else if ($status == 2)
+        {
+            $model->andWhere(['b.status' => $status]);
+        }
+
+        //echo $model->createCommand()->getRawSql();die;
+        $data = $model->orderBy('a.join_group_buying_id desc')
+            ->offset($offset)
+            ->limit(Yii::$app->params['pageSize'])
+            ->asArray()
+            ->all();
+
+        foreach ($data as $k => $v)
+        {
+            $v['countdown'] = $v['e_time'] - time();
+            if ($v['success_time'])
+            {
+                $v['success_time'] = date('Y-m-d H:i:s', $v['success_time']);
+            }
+            $v['e_time'] = date('Y-m-d H:i:s', $v['e_time']);
+            $data[$k] = $v;
+        }
+
+        return response($data);
+    }
+
     /**
      * 参加拼团
      * @return array
@@ -53,16 +106,17 @@ class GroupBuyingController extends BaseCotroller
         $userId = Yii::$app->request->post('user_id', 0);
 
         $groupBuyingInfo = GroupBuying::find()
+            ->alias('a')
             ->select([
                 'a.group_buying_id', 'a.properties_id', 'a.status', 'b.e_time','b.people'
             ])
-            ->alias('a')
             ->leftJoin(GroupBuyingTpl::tableName() . ' b', 'a.group_buying_tpl_id = b.group_buying_tpl_id')
             ->where(['a.group_buying_id' => $groupBuyingId])
+            ->asArray()
             ->one();
 
         // 取不到拼团信息 或 取不到用户ID 或 拼团已经结束或成功 或 拼团结束日期过期 视无法参加
-        if (!$groupBuyingInfo || !$userId || $groupBuyingInfo->status > 0 || $groupBuyingInfo->e_time < time())
+        if (!$groupBuyingInfo || !$userId || $groupBuyingInfo['status'] > 0 || $groupBuyingInfo['e_time'] < time())
         {
             return response([], '20001');
         }
@@ -72,7 +126,7 @@ class GroupBuyingController extends BaseCotroller
             ->where([
                 'user_id' => $userId,
                 'is_cancel' => '0',
-                'properties_id' => $groupBuyingInfo->properties_id
+                'properties_id' => $groupBuyingInfo['properties_id']
             ])
             ->one();
 
@@ -86,7 +140,7 @@ class GroupBuyingController extends BaseCotroller
             ->where(['group_buying_id' => $groupBuyingId, 'is_cancel' => '0'])
             ->count(1);
         // 拼团人数已超 视无法参加
-        if ($count >= $groupBuyingInfo->people)
+        if ($count >= $groupBuyingInfo['people'])
         {
             return response([], '20001');
         }
@@ -94,19 +148,20 @@ class GroupBuyingController extends BaseCotroller
         $model = new JoinGroupBuying();
         $model->user_id = $userId;
         $model->group_buying_id = $groupBuyingId;
-        $model->properties_id = $groupBuyingInfo->properties_id;
+        $model->properties_id = $groupBuyingInfo['properties_id'];
         $model->join_time = time();
 
         // 满团
-        if (($count + 1) >= $groupBuyingInfo->people)
+        if (($count + 1) >= $groupBuyingInfo['people'])
         {
             $transaction = Yii::$app->db->beginTransaction();
             try {
                 // 插入记录
                 $model->save();
                 // 更新状态
-                $groupBuyingInfo->status = 1;
-                $groupBuyingInfo->save();
+                $groupBuyingModel = GroupBuying::findOne(['group_buying_id' => $groupBuyingId]);
+                $groupBuyingModel->status = 1;
+                $groupBuyingModel->save(false);
 
                 $transaction->commit();
 
@@ -135,11 +190,13 @@ class GroupBuyingController extends BaseCotroller
     {
         $data = [];
         $groupBuyingId = Yii::$app->request->get('group_buying_id', 0);
+        $userId = Yii::$app->request->get('user_id', 0);
 
         $groupBuyingInfo = GroupBuying::find()
             ->alias('a')
             ->select([
-                'a.properties_id', 'a.group_buying_tpl_id', 'b.s_time', 'b.e_time', 'b.people', 'b.title', 'c.name', 'c.pic'
+                'a.properties_id', 'a.user_id', 'a.group_buying_tpl_id', 'b.s_time', 'b.e_time', 'b.people', 'b.title',
+                'c.name', 'c.pic'
             ])
             ->leftJoin(GroupBuyingTpl::tableName() . ' b', 'a.group_buying_tpl_id = b.group_buying_tpl_id')
             ->leftJoin(Properties::tableName() . ' c', 'a.properties_id = c.properties_id')
@@ -154,12 +211,25 @@ class GroupBuyingController extends BaseCotroller
         $data['info'] = $groupBuyingInfo;
 
         $data['user'] = JoinGroupBuying::find()
-            ->select(['b.headimgurl'])
+            ->select(['b.headimgurl', 'b.user_id'])
             ->alias('a')
             ->leftJoin(User::tableName() . ' b', 'a.user_id = b.user_id')
             ->where(['group_buying_id' => $groupBuyingId, 'a.is_cancel' => '0'])
             ->asArray()
             ->all();
+
+        $data['status'] = 0;
+        foreach ($data['user'] as $k => $v)
+        {
+            if ($userId == $v['user_id'])
+            {
+                $data['status'] = 1;
+                break;
+            }
+        }
+
+        $data['status_label'] = Yii::$app->params['group_status'][$data['status']];
+        $data['is_owner'] = $userId == $groupBuyingInfo['user_id'] ? true : false;
 
         return response($data);
     }
@@ -194,12 +264,23 @@ class GroupBuyingController extends BaseCotroller
 
         // 当前活动参数用户
         $data['user'] = JoinGroupBuying::find()
-            ->select(['b.headimgurl'])
+            ->select(['b.headimgurl', 'b.user_id'])
             ->alias('a')
             ->leftJoin(User::tableName() . ' b', 'a.user_id = b.user_id')
             ->where(['a.is_cancel' => '0'])
             ->asArray()
             ->all();
+        $data['status'] = 0;
+        foreach ($data['user'] as $k => $v)
+        {
+            if ($userId == $v['user_id'])
+            {
+                $data['status'] = 1;
+                break;
+            }
+        }
+        $data['status_label'] = Yii::$app->params['group_status'][$data['status']];
+        $data['is_owner'] = $userId == $groupBuyingInfo['user_id'] ? true : false;
 
         // 查询用户参与过本楼盘的活动
         $userJoin = JoinGroupBuying::find()
@@ -238,7 +319,10 @@ class GroupBuyingController extends BaseCotroller
         return response($data);
     }
 
-
+    /**
+     * 开团
+     * @return array
+     */
     public function actionCreate()
     {
         $userId = Yii::$app->request->post('user_id', 0);

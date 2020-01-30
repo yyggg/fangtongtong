@@ -30,9 +30,10 @@ class Comment extends Base
     public function rules()
     {
         return [
-            [['properties_id', 'user_id', 'author_user_id', 'create_time'], 'integer'],
-            [['content'], 'required'],
+            [['properties_id', 'user_id', 'author_user_id'], 'integer'],
+            [['content', 'user_id', 'properties_id'], 'required'],
             [['content'], 'string'],
+            ['create_time', 'default', 'value' => time()]
         ];
     }
 
@@ -42,12 +43,12 @@ class Comment extends Base
     public function attributeLabels()
     {
         return [
-            'comment_id' => 'Comment ID',
-            'properties_id' => 'Properties ID',
-            'content' => 'Content',
-            'user_id' => 'User ID',
-            'author_user_id' => 'Author User ID',
-            'create_time' => 'Create Time',
+            'comment_id' => '评论ID',
+            'properties_id' => '楼盘ID',
+            'content' => '内容',
+            'user_id' => '用户ID',
+            'author_user_id' => '被评论用户ID',
+            'create_time' => '评论时间',
         ];
     }
 }

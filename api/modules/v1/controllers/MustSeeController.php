@@ -7,15 +7,16 @@
 namespace api\modules\v1\controllers;
 
 
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
+use api\models\User;
 use common\models\Comment;
 use common\models\GroupBuying;
+use common\models\GroupBuyingTpl;
 use common\models\Properties;
 use common\models\Task;
-use common\models\User;
 use Yii;
 
-class MustSeeController extends BaseCotroller
+class MustSeeController extends BaseController
 {
     /**
      * 必看首页
@@ -26,13 +27,27 @@ class MustSeeController extends BaseCotroller
         // 看拼团
 
         $activity = GroupBuying::find()
+            ->alias('a')
             ->select([
-                'group_buying_id','title', 'people', 'pic'
+                'a.group_buying_id','b.title', 'b.people', 'b.remark', 'c.pic'
             ])
-            ->orderBy('group_buying_id DESC')
+            ->leftJoin(GroupBuyingTpl::tableName() . ' b', 'a.group_buying_tpl_id = b.group_buying_tpl_id')
+            ->leftJoin(Properties::tableName() . ' c', 'a.properties_id = c.properties_id')
+            ->where(['a.status' => '0'])
+            ->andWhere(['>', 'b.e_time', time()])
+            ->orderBy('a.group_buying_id DESC')
             ->limit(2)
             ->asArray()
             ->all();
+
+        foreach ($activity as $k => $v)
+        {
+            if ($v['pic'])
+            {
+                $v['pic'] = json_decode($v['pic']);
+            }
+            $activity[$k] = $v;
+        }
 
         // 任务
         $task = Task::find()
@@ -64,6 +79,9 @@ class MustSeeController extends BaseCotroller
 
         if ($comment)
         {
+            if ($comment['pic']){
+                $comment['pic'] = json_decode($comment['pic']);
+            }
             $comment['create_time'] = date('H:i', $comment['create_time']);
             $comment['sale_status'] = Yii::$app->params['sale_status'][$comment['sale_status']];
         }
@@ -75,5 +93,25 @@ class MustSeeController extends BaseCotroller
         ];
 
         return response($data);
+    }
+
+    /**
+     * 获取分享信息
+     * @return array
+     */
+    public function actionShareInfo()
+    {
+        $propertiesId = Yii::$app->request->get('properties_id', 0);
+        $userId = Yii::$app->request->get('user_id', 0);
+
+        $model = Properties::find()
+            ->select(['name', 'pic'])
+            ->where(['properties_id' => $propertiesId])
+            ->asArray()
+            ->one();
+
+        $model['invite_code'] = User::createInviteCode($userId);
+
+        return response($model);
     }
 }

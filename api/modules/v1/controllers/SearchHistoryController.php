@@ -8,9 +8,9 @@ namespace api\modules\v1\controllers;
 
 use Yii;
 use common\models\SearchHistory;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 
-class SearchHistoryController extends BaseCotroller
+class SearchHistoryController extends BaseController
 {
     /**
      * 搜索历史列表

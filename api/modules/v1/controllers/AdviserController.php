@@ -6,18 +6,19 @@
 
 namespace api\modules\v1\controllers;
 
+use common\models\ApplyAdviser;
 use common\models\Comment;
 use common\models\Properties;
 use common\models\ServeScope;
 use common\models\ServeScopeRelation;
 use common\models\UserAdviserExt;
 use common\models\UserArticle;
+use api\models\User;
 use Yii;
 use common\models\PropertiesAdviserRelation;
-use common\models\User;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 
-class AdviserController extends BaseCotroller
+class AdviserController extends BaseController
 {
     /**
      * 楼盘顾问列表
@@ -119,7 +120,7 @@ class AdviserController extends BaseCotroller
 
         // 文章
         $article = UserArticle::find()
-            ->select(['title', 'user_article_id', 'create_time', 'count(1) as count'])
+            ->select(['title', 'user_article_id', 'create_time'])
             ->where(['user_id' => $userId])
             ->orderBy('user_article_id desc')
             ->asArray()
@@ -135,13 +136,16 @@ class AdviserController extends BaseCotroller
         $comment = Comment::find()
             ->alias('a')
             ->select([
-                'a.content','a.create_time','a.comment_id','count(1) as count','b.name','b.properties_id'
+                'a.content','a.create_time','a.comment_id','b.name','b.properties_id'
             ])
             ->leftJoin(Properties::tableName() . ' b', 'a.properties_id = b.properties_id')
-            ->where(['user_id' => $userId])
-            ->asArray()
+            ->where(['a.user_id' => $userId])
+            ->orderBy('a.comment_id desc')
             ->limit(2)
+            ->asArray()
             ->all();
+
+
         foreach ($comment as $k => $v)
         {
             $v['create_time'] = date('Y.m.d H:i:s', $v['create_time']);
@@ -266,6 +270,36 @@ class AdviserController extends BaseCotroller
         }
 
         return response($model);
+    }
+
+    /**
+     * 升级顾问详情
+     * @return array
+     */
+    public function actionApplyInfo()
+    {
+        $user  =  User::find()
+            ->alias('a')
+            ->select(['a.user_id', 'a.is_adviser', 'b.expire_time'])
+            ->leftJoin(UserAdviserExt::tableName() . ' b', 'a.user_id = b.user_id')
+            ->where(['a.user_id' => $this->_userId])
+            ->asArray()
+            ->one();
+
+        if ($user['expire_time'])
+        {
+            $user['expire_time'] = date('Y.m.d', $user['expire_time']);
+        }
+
+        $applyInfo = ApplyAdviser::find()
+            ->where(['user_id' => $this->_userId])
+            ->asArray()
+            ->one();
+
+        return response([
+            'user' => $user,
+            'apply_info' => $applyInfo,
+        ]);
     }
 
 }

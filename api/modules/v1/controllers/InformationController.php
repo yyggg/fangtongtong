@@ -8,10 +8,10 @@ namespace api\modules\v1\controllers;
 
 
 use Yii;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 use common\models\PropertiesInformation;
 
-class InformationController extends BaseCotroller
+class InformationController extends BaseController
 {
     /**
      * 楼盘资讯列表

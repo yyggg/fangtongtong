@@ -5,11 +5,11 @@
  */
 namespace api\modules\v1\controllers;
 
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 use common\models\ServeScope;
 
 
-class ServeScopeController extends BaseCotroller
+class ServeScopeController extends BaseController
 {
 
     /**

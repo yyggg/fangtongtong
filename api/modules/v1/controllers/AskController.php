@@ -11,9 +11,9 @@ use common\models\Properties;
 use common\models\PropertiesAnswers;
 use common\models\PropertiesAsk;
 use common\models\User;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 
-class AskController extends BaseCotroller
+class AskController extends BaseController
 {
     /**
      * 楼盘问答列表
@@ -56,6 +56,43 @@ class AskController extends BaseCotroller
 
 
         return response($data);
+    }
+
+    /**
+     * 我的提问列表
+     * @return array
+     */
+    public function actionUserIndex()
+    {
+        $page = Yii::$app->request->get('page', 1);
+        $offset = ($page - 1) * Yii::$app->params['pageSize'];
+
+        $model = PropertiesAsk::find()
+            ->alias('a')
+            ->select([
+                'a.title',
+                'a.create_time',
+                'b.name',
+                'a.properties_id',
+                'count(c.properties_ask_id) count'
+            ])
+            ->leftJoin(Properties::tableName() . ' b', 'a.properties_id = b.properties_id')
+            ->leftJoin(PropertiesAnswers::tableName() . ' c', 'a.properties_ask_id = c.properties_ask_id')
+            ->where(['a.ask_user_id' => $this->_userId])
+            ->groupBy('a.properties_ask_id')
+            ->orderBy('a.properties_ask_id desc')
+            ->offset($offset)
+            ->limit(Yii::$app->params['pageSize'])
+            ->asArray()
+            ->all();
+
+        foreach ($model as $k => $v)
+        {
+            $v['create_time'] = date('Y.m.d H:i', $v['create_time']);
+            $model[$k] = $v;
+        }
+
+        return response($model);
     }
 
     /**

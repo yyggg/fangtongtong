@@ -9,9 +9,9 @@ namespace api\modules\v1\controllers;
 use common\models\Encyclopedia;
 use common\models\EncyclopediaCategory;
 use Yii;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 
-class EncyclopediaController extends BaseCotroller
+class EncyclopediaController extends BaseController
 {
     /**
      * 购买百科分类

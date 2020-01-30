@@ -7,11 +7,11 @@ namespace api\modules\v1\controllers;
 
 use common\models\PropertiesLabel;
 use Yii;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 use common\models\Region;
 
 
-class FilterController extends BaseCotroller
+class FilterController extends BaseController
 {
     /**
      * 获取筛选数据

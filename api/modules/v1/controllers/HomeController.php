@@ -6,11 +6,11 @@
 namespace api\modules\v1\controllers;
 
 use Yii;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 use common\models\Properties;
 
 
-class HomeController extends BaseCotroller
+class HomeController extends BaseController
 {
     public function actionIndex()
     {

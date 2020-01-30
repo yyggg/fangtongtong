@@ -11,8 +11,9 @@ use Yii;
  * @property int $group_buying_tpl_id 拼团模板ID
  * @property int $properties_id 楼盘ID
  * @property int $user_id 开团者用户ID
- * @property int $status 状态:0进行中1成功2失败
+ * @property int $status 状态:0未开始1进行中2成功3失败
  * @property int $create_time 创建时间
+ * @property int $success_time 成团时间
  */
 class GroupBuying extends Base
 {
@@ -31,7 +32,7 @@ class GroupBuying extends Base
     {
         return [
             [['properties_id','group_buying_tpl_id'], 'required'],
-            [['properties_id','group_buying_tpl_id', 'user_id', 'status', 'create_time'], 'integer'],
+            [['properties_id','group_buying_tpl_id', 'user_id', 'status', 'create_time','success_time'], 'integer'],
         ];
     }
 
@@ -47,6 +48,7 @@ class GroupBuying extends Base
             'user_id' => 'User ID',
             'status' => 'Status',
             'create_time' => 'Create Time',
+            'success_time' => 'Success Time',
         ];
     }
 }

@@ -10,9 +10,9 @@ namespace api\modules\v1\controllers;
 use common\models\HouseType;
 use common\models\Properties;
 use Yii;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 
-class HouseTypeController extends BaseCotroller
+class HouseTypeController extends BaseController
 {
     /**
      * 户型列表

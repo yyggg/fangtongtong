@@ -14,9 +14,9 @@ use common\models\PropertiesLabelRelation;
 use common\models\Region;
 use common\models\User;
 use Yii;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 
-class CommentController extends BaseCotroller
+class CommentController extends BaseController
 {
     /**
      * 楼盘点评列表
@@ -33,6 +33,39 @@ class CommentController extends BaseCotroller
             ->select(['a.comment_id','a.content', 'a.create_time', 'b.nickname', 'b.headimgurl'])
             ->leftJoin(User::tableName() . ' b', 'a.user_id = b.user_id')
             ->where(['a.properties_id' => $propertiesId])
+            ->offset($offset)
+            ->limit(Yii::$app->params['pageSize'])
+            ->asArray()
+            ->all();
+
+        foreach ($model as $k => $v)
+        {
+            $v['create_time'] = date('Y.m.d H:i:s');
+            $model[$k] = $v;
+        }
+
+        return response($model);
+    }
+
+    /**
+     * 用户点评列表
+     * @return array
+     */
+    public function actionUserIndex()
+    {
+        $page = Yii::$app->request->get('page', 1);
+        $offset = ($page - 1) * Yii::$app->params['pageSize'];
+
+        $model = Comment::find()
+            ->alias('a')
+            ->select([
+                'a.properties_id',
+                'a.create_time',
+                'a.content',
+                'b.name',
+            ])
+            ->leftJoin(Properties::tableName() . ' b', 'a.properties_id = b.properties_id')
+            ->where(['a.user_id' => $this->_userId])
             ->offset($offset)
             ->limit(Yii::$app->params['pageSize'])
             ->asArray()
@@ -78,5 +111,21 @@ class CommentController extends BaseCotroller
         }
 
         return response($model);
+    }
+
+    /**
+     * 点评
+     * @return array
+     */
+    public function actionCreate()
+    {
+        $params = Yii::$app->request->post();
+        $model = new Comment();
+
+        if ($model->load(['Comment' => $params]) && $model->save())
+        {
+            return response();
+        }
+        return response([], '30030', $model->getErrorSummary(false)[0]);
     }
 }

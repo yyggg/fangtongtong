@@ -35,6 +35,7 @@ class UserArticle extends Base
             [['user_id', 'star', 'comment', 'gratuity', 'create_time'], 'integer'],
             [['content'], 'string'],
             [['title'], 'string', 'max' => 90],
+            ['create_time', 'default', 'value' => time()]
         ];
     }
 

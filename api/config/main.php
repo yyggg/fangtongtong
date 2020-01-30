@@ -51,6 +51,7 @@ return [
         ],
         'errorHandler' => [
             'errorAction' => 'site/error',
+            //'class' => 'common\helpers\Exception' //此处新增
         ],
         'urlManager' => [
             'enablePrettyUrl' => true,

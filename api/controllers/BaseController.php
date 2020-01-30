@@ -8,12 +8,11 @@
 
 namespace api\controllers;
 
-use api\models\User;
-use yii\base\Controller;
-use yii\rest\ActiveController;
+use Yii;
+use \yii\rest\Controller;
 use \yii\filters\auth\HttpBearerAuth;
 
-class BaseCotroller extends Controller
+class BaseController extends Controller
 {
     /*public function actions() {
         $actions = parent::actions();
@@ -24,7 +23,24 @@ class BaseCotroller extends Controller
     public $_user;
     public $_userId;
 
-
+    public function beforeAction($action)
+    {
+        if (parent::beforeAction($action))
+        {
+            $accessToken = substr(Yii::$app->request->headers['authorization'], 7);
+            if ($accessToken)
+            {
+                $userId = Yii::$app->redis->get('login:'.$accessToken);
+                if (!$userId)
+                {
+                    return response([], '30100');
+                }
+                $this->_userId = $userId;
+            }
+            return true;
+        }
+        return false;
+    }
 
     /**
      * 登录授权
@@ -41,5 +57,7 @@ class BaseCotroller extends Controller
 
         return $behaviors;
     }
+
+
 
 }

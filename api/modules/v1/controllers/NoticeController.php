@@ -9,9 +9,9 @@ namespace api\modules\v1\controllers;
 use common\models\Notice;
 use common\models\UserNoticeRelation;
 use Yii;
-use api\controllers\BaseCotroller;
+use api\controllers\BaseController;
 
-class NoticeController extends BaseCotroller
+class NoticeController extends BaseController
 {
     /**
      * 消息通知主页
