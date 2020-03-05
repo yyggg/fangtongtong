@@ -14,54 +14,92 @@ use api\controllers\BaseController;
 class NoticeController extends BaseController
 {
     /**
+     * 系统公告
+     * @return array
+     */
+    public function actionSys()
+    {
+        $model = Notice::find()
+            ->select(['title','notice_id','create_time','content'])
+            ->where(['category_id' => 0, 'sub_category_id' => 0])
+            ->orderBy('notice_id desc')->asArray()->all();
+        return response($model);
+    }
+    /**
      * 消息通知主页
      * @return array
      */
     public function actionIndex()
     {
         $data = [];
-        $userId = Yii::$app->request->get('user_id', 0);
+        $stime  = strtotime(date('Y-m-d'));
 
         // 系统类型通知
-        $sysNotice = Notice::find()
-            ->select(['notice_id', 'category_id', 'title', 'notice_time'])
-            ->where(['or', ['=', 'user_id', $userId], ['=', 'user_id', '0']])
-            ->andWhere(['category_id' => '0'])
-            ->orderBy('notice_id desc')
+        $sysNotice = UserNoticeRelation::find()
+            ->alias('a')
+            ->select(['a.notice_id', 'b.category_id', 'b.title', 'b.notice_time'])
+            ->leftJoin(Notice::tableName(). ' b', 'a.notice_id = b.notice_id')
+            //->where(['or', ['like', 'user_id', ','.$this->_userId.','], ['=', 'user_id', ''], ['=', 'user_id', $this->_userId]])
+            ->where(['a.user_id' => $this->_userId, 'b.category_id' => '0'])
+            ->orderBy('a.notice_id desc')
             ->asArray()
             ->one();
 
         if ($sysNotice)
         {
-            $sysNotice['notice_time'] = date('n/d', $sysNotice['notice_time']);
+            if ($sysNotice['notice_time'] > $stime)
+            {
+                $sysNotice['notice_time'] = date('H:i', $sysNotice['notice_time']);
+            }
+            else
+            {
+                $sysNotice['notice_time'] = date('n/d', $sysNotice['notice_time']);
+            }
+
         }
         $data['sys_notice'] = $sysNotice;
 
         // 分销消息通知
-        $distributionNotice = Notice::find()
-            ->select(['notice_id', 'category_id', 'title', 'notice_time'])
-            ->where(['or', ['=', 'user_id', $userId], ['=', 'user_id', '0']])
-            ->andWhere(['category_id' => '1'])
-            ->orderBy('notice_id desc')
+        $distributionNotice = UserNoticeRelation::find()
+            ->alias('a')
+            ->select(['a.notice_id', 'b.category_id', 'b.title', 'b.notice_time'])
+            ->leftJoin(Notice::tableName(). ' b', 'a.notice_id = b.notice_id')
+            ->where(['a.user_id' => $this->_userId, 'b.category_id' => '1'])
+            ->orderBy('a.notice_id desc')
             ->asArray()
             ->one();
         if ($distributionNotice)
         {
-            $distributionNotice['notice_time'] = date('n/d', $distributionNotice['notice_time']);
+            if ($distributionNotice['notice_time'] > $stime)
+            {
+                $distributionNotice['notice_time'] = date('H:i', $distributionNotice['notice_time']);
+            }
+            else
+            {
+                $distributionNotice['notice_time'] = date('n/d', $distributionNotice['notice_time']);
+            }
         }
         $data['distribution_notice'] = $distributionNotice;
 
         // 奖励通知
-        $rewardNotice = Notice::find()
-            ->select(['notice_id', 'category_id', 'title', 'notice_time'])
-            ->where(['or', ['=', 'user_id', $userId], ['=', 'user_id', '0']])
-            ->andWhere(['category_id' => '2'])
-            ->orderBy('notice_id desc')
+        $rewardNotice = UserNoticeRelation::find()
+            ->alias('a')
+            ->select(['a.notice_id', 'b.category_id', 'b.title', 'b.notice_time'])
+            ->leftJoin(Notice::tableName(). ' b', 'a.notice_id = b.notice_id')
+            ->where(['a.user_id' => $this->_userId, 'b.category_id' => '2'])
+            ->orderBy('a.notice_id desc')
             ->asArray()
             ->one();
         if ($rewardNotice)
         {
-            $rewardNotice['notice_time'] = date('n/d', $rewardNotice['notice_time']);
+            if ($rewardNotice['notice_time'] > $stime)
+            {
+                $rewardNotice['notice_time'] = date('H:i', $rewardNotice['notice_time']);
+            }
+            else
+            {
+                $rewardNotice['notice_time'] = date('n/d', $rewardNotice['notice_time']);
+            }
         }
         $data['reward_notice'] = $rewardNotice;
 
@@ -75,16 +113,16 @@ class NoticeController extends BaseController
      */
     public function actionList()
     {
-        $userId = Yii::$app->request->get('user_id', 0);
         $categoryId = Yii::$app->request->get('category_id', 0);
         $page = Yii::$app->request->get('page', 1);
         $offset = ($page - 1) * Yii::$app->params['pageSize'];
 
-        $model = Notice::find()
-            ->select(['notice_id', 'title', 'sub_category_id', 'notice_time'])
-            ->where(['or', ['=', 'user_id', $userId], ['=', 'user_id', '0']])
-            ->andWhere(['category_id' => $categoryId])
-            ->orderBy('notice_id desc')
+        $model = UserNoticeRelation::find()
+            ->alias('a')
+            ->select(['a.notice_id', 'b.title', 'b.sub_category_id', 'b.notice_time'])
+            ->leftJoin(Notice::tableName() . ' b', 'a.notice_id = b.notice_id')
+            ->where(['a.user_id' => $this->_userId, 'b.category_id' => $categoryId])
+            ->orderBy('a.notice_id desc')
             ->offset($offset)
             ->limit(Yii::$app->params['pageSize'])
             ->asArray()
@@ -98,5 +136,71 @@ class NoticeController extends BaseController
         }
 
         return response($model);
+    }
+
+    /**
+     * 通知详情
+     * @return array
+     */
+    public function actionInfo()
+    {
+        $noticeId = Yii::$app->request->get('notice_id', 0);
+        $model = Notice::find()
+            ->where(['notice_id' => $noticeId])
+            ->asArray()
+            ->one();
+
+        if ($model)
+        {
+            $model['notice_time'] = date('Y-m-d', $model['notice_time']);
+            $model['title_type'] = Yii::$app->params['sub_notice_category'][$model['category_id']][$model['sub_category_id']];
+        }
+
+        return response($model);
+    }
+
+    /**
+     * 用户拉取消息
+     * @return array
+     * @throws \yii\db\Exception
+     */
+    public function actionPull()
+    {
+        $response = ['has_notice' => 0]; // 是否有新消息
+
+        if (!$this->_userId)
+        {
+            return response($response);
+        }
+        // 查询用户最后一条消息
+        $uNotice = UserNoticeRelation::find()
+            ->where(['user_id' => $this->_userId])
+            ->orderBy('user_notice_relation_id desc')
+            ->asArray()
+            ->one();
+        $noticeId = $uNotice ? $uNotice['notice_id'] : 0;
+
+        $notice = Notice::find()
+            ->select(['notice_id'])
+            ->where(['or', ['like', 'user_id', ','.$this->_userId.','], ['=', 'user_id', ''], ['=', 'user_id', $this->_userId]])
+            ->andWhere(['>', 'notice_id', $noticeId])
+            ->asArray()
+            ->all();
+
+        if ($notice)
+        {
+            $data = [];
+            foreach ($notice as $v)
+            {
+                $data[] = ['notice_id' => $v['notice_id'], 'user_id' => $this->_userId];
+            }
+            Yii::$app->db->createCommand()
+                ->batchInsert(UserNoticeRelation::tableName(),['notice_id','user_id'], $data)
+                ->execute();
+
+            $response['has_notice'] = 1;
+        }
+
+        return response($response);
     }
 }

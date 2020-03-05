@@ -14,7 +14,7 @@ use Yii;
  * @property string $square_metre平米
  * @property int $room_category_id 1一室2二室3三室4四室5五室
  * @property string $price 总价(单位:万)
- * @property int $status 0售罄1在售2待售
+ * @property int $status 0是否待售0不是1是
  * @property string $direction 朝向
  * @property string $distribute 户型分布
  */

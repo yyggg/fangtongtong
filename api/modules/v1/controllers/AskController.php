@@ -70,6 +70,7 @@ class AskController extends BaseController
         $model = PropertiesAsk::find()
             ->alias('a')
             ->select([
+                'a.properties_ask_id',
                 'a.title',
                 'a.create_time',
                 'b.name',

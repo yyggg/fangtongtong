@@ -59,6 +59,7 @@ class CommentController extends BaseController
         $model = Comment::find()
             ->alias('a')
             ->select([
+                'a.comment_id',
                 'a.properties_id',
                 'a.create_time',
                 'a.content',
@@ -108,6 +109,7 @@ class CommentController extends BaseController
         {
             $model['create_time'] = date('Y.m.d H:i:s');
             $model['sale_status'] = Yii::$app->params['sale_status'][$model['sale_status']];
+            $model['pic'] = json_decode($model['pic']);
         }
 
         return response($model);

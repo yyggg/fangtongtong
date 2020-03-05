@@ -39,7 +39,7 @@ class PropertiesController extends BaseController
             FROM
                 ftt_properties AS a 
             WHERE
-                ( SELECT COUNT( * ) FROM ftt_properties AS b WHERE b.down_payment_id = a.down_payment_id AND b.properties_id >= a.properties_id ) <= 3 
+                ( SELECT COUNT( * ) FROM ftt_properties AS b WHERE b.down_payment_id = a.down_payment_id AND a.publish = 1 AND b.properties_id >= a.properties_id ) <= 3 
             ORDER BY
                 a.down_payment_id,
                 a.properties_id DESC";
@@ -56,7 +56,7 @@ class PropertiesController extends BaseController
         $model = Properties::find()
             ->alias('a')
             ->select([
-                'a.properties_id','a.name','a.pic','a.price_metre','a.sale_status',
+                'a.properties_id','a.commission','a.name','a.pic','a.price_metre','a.sale_status',
                 'MIN(e.square_metre) AS square_metre_min', 'MAX(e.square_metre) AS square_metre_max',
                 'GROUP_CONCAT(DISTINCT c.label_name) AS label_name','MAX(d.region_name) AS region_name'
             ])
@@ -64,7 +64,7 @@ class PropertiesController extends BaseController
             ->leftJoin(PropertiesLabel::tableName() . ' c', 'c.properties_label_id=b.properties_label_id')
             ->leftJoin(Region::tableName() . ' d', 'd.region_code=a.region_code')
             ->leftJoin(HouseType::tableName() . ' e', 'e.properties_id=a.properties_id')
-            ->where(['a.city_code' => $cityCode, 'a.recommend' => '1'])
+            ->where(['a.city_code' => $cityCode, 'a.recommend' => '1', 'a.publish' => '1'])
             ->groupBy('a.properties_id')
             ->orderBy('a.properties_id desc')
             ->limit(2)
@@ -184,7 +184,7 @@ class PropertiesController extends BaseController
             ->leftJoin(PropertiesLabel::tableName() . ' c', 'c.properties_label_id=b.properties_label_id')
             ->leftJoin(Region::tableName() . ' d', 'd.region_code=a.region_code')
             ->leftJoin(HouseType::tableName() . ' e', 'e.properties_id=a.properties_id');
-
+        $query->where(['a.publish' => '1']);
         $query->andFilterWhere(['a.city_code' => $cityCode]);
         $query->andFilterWhere(['a.region_code' => $regionCode]);
         $query->andFilterWhere(['>','a.price_metre', $unitPriceMin]);
@@ -257,13 +257,14 @@ class PropertiesController extends BaseController
         $sort = 'a.properties_id DESC'; // 默认排序
 
         $page          = Yii::$app->request->post('page', 1); // 页码
-        $cityCode          = Yii::$app->request->post('city_code', 110100); // 定位的城市码
+        $cityCode      = Yii::$app->request->post('city_code', 110100); // 定位的城市码
         $sortKey       = Yii::$app->request->post('sort_key', ''); // 排序键
         $sortVal       = Yii::$app->request->post('sort_val', ''); // 排序值
         $regionCode    = Yii::$app->request->post('region_code', ''); // 区码 城市筛选
         $unitPriceKey  = Yii::$app->request->post('unit_price', ''); // 单价筛选
         $totalPriceKey = Yii::$app->request->post('total_price', ''); // 总价筛选
         $houseType     = Yii::$app->request->post('house_type', ''); // 户型筛选
+        $keyword     = Yii::$app->request->post('keyword', ''); // 楼盘名称
 
 
         $highRemuneration = Yii::$app->request->post('high_remuneration', ''); // 高佣金筛选
@@ -334,7 +335,7 @@ class PropertiesController extends BaseController
         $query = Properties::find()
             ->alias('a')
             ->select([
-                'a.properties_id','a.name','a.pic','a.price_metre','a.sale_status',
+                'a.properties_id','a.commission','a.name','a.pic','a.price_metre','a.sale_status',
                 'MIN(e.square_metre) AS square_metre_min', 'MAX(e.square_metre) AS square_metre_max',
                 'GROUP_CONCAT(DISTINCT c.label_name) AS label_name','MAX(d.region_name) AS region_name'
             ])
@@ -342,7 +343,7 @@ class PropertiesController extends BaseController
             ->leftJoin(PropertiesLabel::tableName() . ' c', 'c.properties_label_id=b.properties_label_id')
             ->leftJoin(Region::tableName() . ' d', 'd.region_code=a.region_code')
             ->leftJoin(HouseType::tableName() . ' e', 'e.properties_id=a.properties_id');
-
+        $query->where(['publish' => '1']);
         $query->andFilterWhere(['a.city_code' => $cityCode]);
         $query->andFilterWhere(['a.region_code' => $regionCode]);
         $query->andFilterWhere(['>','a.price_metre', $unitPriceMin]);
@@ -357,6 +358,12 @@ class PropertiesController extends BaseController
         $query->andFilterWhere(['a.high_remuneration' => $highRemuneration]);
         $query->andFilterWhere(['a.down_payment_id' => $downPayment]);
         $query->andFilterWhere(['a.fast_get_remuneration' => $fast_get_remuneration]);
+
+        if ($keyword)
+        {
+            $query->andWhere("a.name like :keyword or a.full_address like :keyword");
+            $query->addParams([':keyword' => '%'.$keyword.'%']);
+        }
 
         // 物业类型单选或多选判断来筛选
         if (isset($propertyType[1]))
@@ -388,7 +395,7 @@ class PropertiesController extends BaseController
             $query->andFilterWhere(['c.properties_label_id' => $saleStatus[0]]);
         }
 
-
+//echo $query->createCommand()->getRawSql();die;
         $model = $query->groupBy('a.properties_id')
             ->orderBy($sort)
             ->offset($offset)
@@ -427,7 +434,7 @@ class PropertiesController extends BaseController
         $model = Properties::find()
             ->alias('a')
             ->select([
-                'a.properties_id','a.name','a.pic','a.video','a.region_code','a.sale_status',
+                'a.properties_id','a.commission','a.name','a.rough','a.tpl','a.pic','a.video','a.region_code','a.sale_status',
                 'a.open_time','a.address','a.price_avg','a.price_total_min','a.price_total_max','a.property_type_id',
                 'GROUP_CONCAT(c.label_name) AS label_name'
             ])
@@ -441,9 +448,16 @@ class PropertiesController extends BaseController
         {
             $model['pic'] = json_decode($model['pic']);
         }
+        if ($model['tpl'])
+        {
+            $model['tpl'] = json_decode($model['tpl']);
+        }
+        $model['price_total_min'] = floatval($model['price_total_min']);
+        $model['price_total_max'] = floatval($model['price_total_max']);
 
         $model['property_type_name'] = Yii::$app->params['property_type_name'][$model['property_type_id']];
         $model['sale_status'] = Yii::$app->params['sale_status'][$model['sale_status']];
+        $model['rough'] = Yii::$app->params['rough'][$model['rough']];
         $model['open_time'] = date('Y-m-d');
         $data['info'] = $model;
 
@@ -578,6 +592,7 @@ class PropertiesController extends BaseController
                 $v['pic'] = json_decode($v['pic']);
                 $guess[$k] = $v;
             }
+            $guess[$k]['sale_status'] = Yii::$app->params['sale_status'][$v['sale_status']];
         }
 
         $data['guess'] = $guess;

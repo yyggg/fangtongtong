@@ -39,7 +39,13 @@ class GroupBuyingController extends BaseController
             ->limit(Yii::$app->params['pageSize'])
             ->asArray()
             ->all();
-
+        foreach ($model as $k => $v)
+        {
+            $v['pic'] = json_decode($v['pic']);
+            $v['s_time'] = date('Y.m.d', $v['s_time']);
+            $v['e_time'] = date('Y.m.d', $v['e_time']);
+            $model[$k] = $v;
+        }
         return response($model);
     }
 
@@ -89,7 +95,8 @@ class GroupBuyingController extends BaseController
             {
                 $v['success_time'] = date('Y-m-d H:i:s', $v['success_time']);
             }
-            $v['e_time'] = date('Y-m-d H:i:s', $v['e_time']);
+            $v['s_time'] = date('Y-m-d', $v['s_time']);
+            $v['e_time'] = date('Y-m-d', $v['e_time']);
             $data[$k] = $v;
         }
 
@@ -125,7 +132,6 @@ class GroupBuyingController extends BaseController
         $joinGroupBuyingInfo = JoinGroupBuying::find()
             ->where([
                 'user_id' => $userId,
-                'is_cancel' => '0',
                 'properties_id' => $groupBuyingInfo['properties_id']
             ])
             ->one();
@@ -137,7 +143,7 @@ class GroupBuyingController extends BaseController
 
         // 统计已参加人数
         $count = JoinGroupBuying::find()
-            ->where(['group_buying_id' => $groupBuyingId, 'is_cancel' => '0'])
+            ->where(['group_buying_id' => $groupBuyingId])
             ->count(1);
         // 拼团人数已超 视无法参加
         if ($count >= $groupBuyingInfo['people'])
@@ -208,13 +214,16 @@ class GroupBuyingController extends BaseController
         $groupBuyingInfo['countdown_time'] = $groupBuyingInfo['e_time'] - time();
         $groupBuyingInfo['s_time'] = date('Y.m.d', $groupBuyingInfo['s_time']);
         $groupBuyingInfo['e_time'] = date('Y.m.d', $groupBuyingInfo['e_time']);
+
+        $groupBuyingInfo['pic'] = json_decode($groupBuyingInfo['pic']);
+
         $data['info'] = $groupBuyingInfo;
 
         $data['user'] = JoinGroupBuying::find()
             ->select(['b.headimgurl', 'b.user_id'])
             ->alias('a')
             ->leftJoin(User::tableName() . ' b', 'a.user_id = b.user_id')
-            ->where(['group_buying_id' => $groupBuyingId, 'a.is_cancel' => '0'])
+            ->where(['a.group_buying_id' => $groupBuyingId])
             ->asArray()
             ->all();
 
@@ -260,6 +269,7 @@ class GroupBuyingController extends BaseController
         $groupBuyingInfo['countdown_time'] = $groupBuyingInfo['e_time'] - time();
         $groupBuyingInfo['s_time'] = date('Y.m.d', $groupBuyingInfo['s_time']);
         $groupBuyingInfo['e_time'] = date('Y.m.d', $groupBuyingInfo['e_time']);
+        $groupBuyingInfo['pic'] = json_decode($groupBuyingInfo['pic']);
         $data['info'] = $groupBuyingInfo;
 
         // 当前活动参数用户
@@ -267,7 +277,7 @@ class GroupBuyingController extends BaseController
             ->select(['b.headimgurl', 'b.user_id'])
             ->alias('a')
             ->leftJoin(User::tableName() . ' b', 'a.user_id = b.user_id')
-            ->where(['a.is_cancel' => '0'])
+            ->where(['a.group_buying_id' => $groupBuyingId])
             ->asArray()
             ->all();
         $data['status'] = 0;
@@ -285,7 +295,7 @@ class GroupBuyingController extends BaseController
         // 查询用户参与过本楼盘的活动
         $userJoin = JoinGroupBuying::find()
             ->select(['join_group_buying_id'])
-            ->where(['properties_id' => $groupBuyingInfo['properties_id'], 'is_cancel' => '0', 'user_id' => $userId])
+            ->where(['properties_id' => $groupBuyingInfo['properties_id'], 'user_id' => $userId])
             ->indexBy('group_buying_id')
             ->asArray()
             ->all();

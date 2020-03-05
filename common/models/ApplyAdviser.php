@@ -35,6 +35,7 @@ class ApplyAdviser extends Base
             [['name'], 'string', 'max' => 4],
             [['idcard'], 'string', 'max' => 18],
             [['picture'], 'string', 'max' => 150],
+            ['create_time', 'default', 'value' => time()]
         ];
     }
 
@@ -53,4 +54,5 @@ class ApplyAdviser extends Base
             'create_time' => 'Create Time',
         ];
     }
+
 }

@@ -14,6 +14,7 @@ use common\models\ServeScopeRelation;
 use common\models\UserAdviserExt;
 use common\models\UserArticle;
 use api\models\User;
+use crazyfd\qiniu\Qiniu;
 use Yii;
 use common\models\PropertiesAdviserRelation;
 use api\controllers\BaseController;
@@ -79,7 +80,7 @@ class AdviserController extends BaseController
             ->leftJoin(ServeScopeRelation::tableName() . ' f', 'd.user_id = f.user_id')
             ->andFilterWhere(['or',['like','a.name', $keyword], ['like','c.nickname', $keyword]])
             ->andFilterWhere(['in', 'f.serve_scope_id', $serveScopeId])
-            ->andFilterWhere(['region_code' => $regionCode])
+            ->andFilterWhere(['d.region_code' => $regionCode])
             ->groupBy('c.user_id') // 去重复
             ->offset($offset)
             ->limit(Yii::$app->params['pageSize'])
@@ -108,6 +109,8 @@ class AdviserController extends BaseController
             ->where(['a.user_id' => $userId])
             ->asArray()
             ->one();
+
+        $user['serve_length'] = floatval($user['serve_length']);
 
         // 服务范围
         $serve = ServeScopeRelation::find()
@@ -300,6 +303,44 @@ class AdviserController extends BaseController
             'user' => $user,
             'apply_info' => $applyInfo,
         ]);
+    }
+
+    /**
+     * 顾问升级申请
+     * @return array
+     * @throws \Exception
+     */
+    public function actionApply()
+    {
+        $name = Yii::$app->request->post('name', '');
+        $idcard = Yii::$app->request->post('idcard', '');
+
+        $fileName = uniqid().time();
+
+        $model = ApplyAdviser::findOne(['user_id' => $this->_userId]);
+
+        if (!$model)
+        {
+            $model = new ApplyAdviser();
+            $model->user_id = $this->_userId;
+        }
+
+        $qiniu = new Qiniu(Yii::$app->params['access_key'],Yii::$app->params['secret_key'],Yii::$app->params['domain'],Yii::$app->params['bucket']);
+
+        $qiniu->uploadFile($_FILES['picture']['tmp_name'], $fileName);
+
+        $url = $qiniu->getLink($fileName);
+
+        $model->name = $name;
+        $model->idcard = $idcard;
+        $model->picture = $url;
+
+        if ($model->save())
+        {
+            return response();
+        }
+
+        return response([], '20001');
     }
 
 }

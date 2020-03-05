@@ -37,7 +37,7 @@ class RegionController extends BaseController
      */
     public function actionArea()
     {
-        $regionCode = Yii::$app->request->get('region_code', '');
+        $regionCode = Yii::$app->request->get('city_code', '');
         $model = Region::find()
             ->select(['region_name', 'region_code'])
             ->where(['parent_code' => $regionCode])

@@ -8,9 +8,17 @@ namespace api\modules\v1\controllers;
 
 use api\models\SignupForm;
 use api\models\User;
+use common\models\HouseType;
 use common\models\InviteReg;
+use common\models\Properties;
+use common\models\PropertiesAdviserRelation;
 use common\models\PropertiesAnswers;
+use common\models\PropertiesLabel;
+use common\models\PropertiesLabelRelation;
+use common\models\Region;
 use common\models\UserArticle;
+use common\models\UserDistribution;
+use crazyfd\qiniu\Qiniu;
 use Yii;
 use api\controllers\BaseController;
 
@@ -69,26 +77,39 @@ class UserController extends BaseController
         $phone = Yii::$app->request->post('phone', '');
         $smsCode = Yii::$app->request->post('sms_code', '');
         $password = Yii::$app->request->post('password', '');
+        $type = Yii::$app->request->post('type', 'pass'); // 登录类型 sms短信, pass密码
 
         // 判断登录方式是密码还是手机验证码
-        if ($password)
+        if ($type === 'pass')
         {
-            $model = User::findByPassword($phone, $password);
+            if (!$password || $password == null)
+            {
+                return response([], '30030', '密码不能为空。');
+            }
+            $model = User::findByPassword($phone);
+            if (!$model)
+            {
+                return response([], '30030', '用户不存在。');
+            }
+
+            if (!Yii::$app->security->validatePassword($password, $model['password']))
+            {
+                return response([], '30030', '密码错误。');
+            }
         }
         else
         {
             $code = Yii::$app->redis->get('sms:'.$phone . '_1');
-            if ($code != $smsCode)
+
+            if (!$code || $code != $smsCode)
             {
-                return response([], '30100');
+                return response([], '30030', '手机验证码错误');
             }
             $model = User::findByPhone($phone);
-        }
-
-
-        if (!$model)
-        {
-            return response([], '30100');
+            if (!$model)
+            {
+                return response([], '30030', '用户不存在。');
+            }
         }
 
         $model['access_token'] = User::generateAccessToken($model['user_id']);
@@ -121,7 +142,7 @@ class UserController extends BaseController
                 'sms_code' => $smsCode,
                 'invite_code' => $inviteCode,
                 'source' => $source,
-                'source_id' => $sourceId,
+                'source_id' => $sourceId
             ]
         ];
 
@@ -145,11 +166,11 @@ class UserController extends BaseController
         $type = Yii::$app->request->get('type', 0);
 
         $res = sendSms($phone, '', $type);
-        if ($res)
+        if (!$res['code'])
         {
             return response();
         }
-        return response([], '30030', '发送手机验证码失败。');
+        return response([], '30030', $res['msg']);
     }
 
     /**
@@ -194,12 +215,19 @@ class UserController extends BaseController
     // 头像修改
     public function actionUpdateAvatar()
     {
-        $model = User::findOne(['user_id' => $this->_userId]);
-        $avatar = uploads('avatar');
+        $fileName = uniqid().time();
 
-        if ($avatar)
+        $model = User::findOne(['user_id' => $this->_userId]);
+
+        $qiniu = new Qiniu(Yii::$app->params['access_key'],Yii::$app->params['secret_key'],Yii::$app->params['domain'],Yii::$app->params['bucket']);
+
+        $qiniu->uploadFile($_FILES['avatar']['tmp_name'], $fileName);
+
+        $url = $qiniu->getLink($fileName);
+
+        if ($url)
         {
-            $model->headimgurl = $avatar;
+            $model->headimgurl = $url;
             $res = $model->save(false);
             if ($res)
             {
@@ -296,7 +324,152 @@ class UserController extends BaseController
     public function actionInviteCode()
     {
         $response = ['invite_code' => User::createInviteCode($this->_userId)];
-        response($response);
+        return response($response);
+    }
+
+    /**
+     * 我的分销下级
+     * @return array
+     */
+    public function actionDownLevel()
+    {
+        $page = Yii::$app->request->get('page', 1);
+        $offset = ($page - 1) * Yii::$app->params['pageSize'];
+
+        $model = InviteReg::find()
+            ->alias('a')
+            ->select([
+                'b.user_id',
+                'b.headimgurl',
+                'b.nickname',
+                'b.create_time',
+                'b.phone'
+            ])
+            ->where([
+                'invite_user_id' => $this->_userId
+            ])
+            ->leftJoin(User::tableName() . ' b', 'a.reg_user_id = b.user_id')
+            ->orderBy('invite_reg_id desc')
+            ->offset($offset)
+            ->limit(Yii::$app->params['pageSize'])
+            ->asArray()
+            ->all();
+
+        foreach ($model as $k => $v)
+        {
+            $v['phone'] = substr_replace($v['phone'], '****', 3, 4);
+            $v['create_time'] = date('Y.m.d', $v['create_time']);
+            $model[$k] = $v;
+        }
+
+        return response($model);
+    }
+
+    /**
+     * 我的分销信息
+     * @return array
+     */
+    public function actionDistribution()
+    {
+        $page          = Yii::$app->request->post('page', 1); // 页码
+        $offset = ($page - 1) * \Yii::$app->params['pageSize'];
+
+        $model = UserDistribution::find()
+            ->alias('f')
+            ->select([
+                'f.commission','f.register_time','f.sale_time','a.properties_id','a.name','a.pic','a.price_metre',
+                'a.sale_status','MIN(e.square_metre) AS square_metre_min', 'MAX(e.square_metre) AS square_metre_max',
+                'GROUP_CONCAT(DISTINCT c.label_name) AS label_name','MAX(d.region_name) AS region_name'
+            ])
+            ->leftJoin(Properties::tableName() . ' a', 'f.properties_id=a.properties_id')
+            ->leftJoin(PropertiesLabelRelation::tableName() . ' b', 'a.properties_id=b.properties_id')
+            ->leftJoin(PropertiesLabel::tableName() . ' c', 'c.properties_label_id=b.properties_label_id')
+            ->leftJoin(Region::tableName() . ' d', 'd.region_code=a.region_code')
+            ->leftJoin(HouseType::tableName() . ' e', 'e.properties_id=a.properties_id')
+            ->where(['f.user_id' => $this->_userId])
+            ->groupBy('a.properties_id')
+            ->orderBy('f.user_distribution_id')
+            ->offset($offset)
+            ->limit(\Yii::$app->params['pageSize'])
+            ->asArray()
+            ->all();
+
+        foreach ($model as $k => $v)
+        {
+            $v['square_metre_min'] = floatval($v['square_metre_min']);
+            $v['square_metre_max'] = floatval($v['square_metre_max']);
+            $v['commission'] = floatval($v['commission']);
+            $v['register_time'] = date('Y.m.d', $v['register_time']);
+            $v['sale_time'] = date('Y.m.d', $v['sale_time']);
+            $v['pic'] = json_decode($v['pic']);
+            $v['sale_status'] = Yii::$app->params['sale_status'][$v['sale_status']];
+            $model[$k] = $v;
+        }
+
+        return response($model);
+    }
+
+    /**
+     * 我的楼盘分销
+     * @return array
+     * @throws \yii\db\Exception
+     */
+    public function actionProperties()
+    {
+        $page          = Yii::$app->request->post('page', 1); // 页码
+        $offset = ($page - 1) * Yii::$app->params['pageSize'];
+
+        $sql = "SELECT
+                b.properties_id,
+                b.name,
+                b.pic,
+                c.region_name,
+                ( SELECT COUNT( 1 ) FROM ".InviteReg::tableName()." WHERE source = 2 AND b.properties_id = source_id ) count
+            FROM
+                ".PropertiesAdviserRelation::tableName()." a
+                LEFT JOIN ".Properties::tableName()." b ON a.properties_id = b.properties_id
+                LEFT JOIN ".Region::tableName()." c ON b.region_code = c.region_code
+            WHERE
+                a.user_id = {$this->_userId}
+            ORDER BY a.properties_adviser_relation_id DESC     
+            LIMIT {$offset}, ". Yii::$app->params['pageSize'];
+
+        $model = Yii::$app->getDb()->createCommand($sql)->queryAll();
+        foreach ($model as $k => $v)
+        {
+            $v['pic'] = json_decode($v['pic']);
+            $model[$k] = $v;
+        }
+
+        return response($model);
+    }
+
+    /**
+     * 我的分销
+     * @return array
+     */
+    public function actionDistributionCount()
+    {
+        $response = [];
+        $response['properties_count'] = PropertiesAdviserRelation::find()->where(['user_id' => $this->_userId])->count(1);
+        $response['distribution_count'] = UserDistribution::find()->where(['user_id' => $this->_userId])->count(1);
+        $response['invite_count'] = InviteReg::find()->where([
+            'invite_user_id' => $this->_userId
+        ])->count(1);
+
+        return response($response);
+    }
+
+    /**
+     * 退出登录
+     * @return array
+     */
+    public function actionLogout()
+    {
+        $accessToken = substr(Yii::$app->request->headers['authorization'], 7);
+        $key = 'login:' . $accessToken;
+        Yii::$app->redis->del($key);
+        return response();
     }
 
 }

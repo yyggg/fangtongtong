@@ -23,6 +23,7 @@ class User extends Base implements IdentityInterface
         return [
             ['status', 'default', 'value' => self::STATUS_ACTIVE],
             ['status', 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_DELETED]],
+            ['headimgurl', 'default', 'value' => 'http://yhjm-cdn.yihuijumei.com/5e3c0dca2b5381580993994']
         ];
     }
 
@@ -39,19 +40,12 @@ class User extends Base implements IdentityInterface
 
     public static function findByPhone($phone = null)
     {
-        return static::findOne(['phone' => $phone, 'status' => self::STATUS_ACTIVE])->toArray();
+        return static::find()->where(['phone' => $phone, 'status' => self::STATUS_ACTIVE])->asArray()->one();
     }
 
-    public static function findByPassword($phone = '', $password = '')
+    public static function findByPassword($phone = '')
     {
-        $user = static::findOne(['phone' => $phone, 'status' => self::STATUS_ACTIVE])->toArray();
-
-        if (!$user)
-        {
-            return false;
-        }
-
-        return Yii::$app->security->validatePassword($password, $user['password']) ? $user : false;
+        return static::find()->where(['phone' => $phone, 'status' => self::STATUS_ACTIVE])->asArray()->one();
     }
 
     /**

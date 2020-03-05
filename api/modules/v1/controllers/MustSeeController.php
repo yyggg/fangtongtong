@@ -109,7 +109,7 @@ class MustSeeController extends BaseController
             ->where(['properties_id' => $propertiesId])
             ->asArray()
             ->one();
-
+        $model['pic'] = json_encode($model['pic']);
         $model['invite_code'] = User::createInviteCode($userId);
 
         return response($model);

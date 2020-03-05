@@ -46,6 +46,10 @@ class SeeHouseController extends BaseController
         return response($model);
     }
 
+    /**
+     * 预约详情
+     * @return array
+     */
     public function actionInfo()
     {
         $id = Yii::$app->request->get('appoint_see_room_id', 0);
@@ -100,6 +104,31 @@ class SeeHouseController extends BaseController
         return response($model);
 
     }
+
+    /**
+     * 楼盘预约详情
+     * @return array
+     */
+    public function actionInfoByProperties()
+    {
+        $propertiesId = Yii::$app->request->get('properties_id', 0);
+        $model = AppointSeeHouse::find()
+            ->select([
+                'appoint_see_room_id','properties_id','time_slot','date','status'
+            ])
+            ->where([
+                'properties_id' => $propertiesId,
+                'user_id' => $this->_userId,
+            ])
+            ->asArray()
+            ->one();
+        if ($model)
+        {
+            $model['date'] = date('Y-m-d', $model['date']);
+        }
+        return response($model);
+    }
+
     /**
      * 预约看房
      * @return array
@@ -116,14 +145,31 @@ class SeeHouseController extends BaseController
         $model = AppointSeeHouse::find()
             ->where([
                 'properties_id' => $propertiesId,
-                    'user_id' => $userId
+                'user_id' => $userId
             ])
             ->andWhere(['<', 'status', 2])
             ->one();
 
         if ($model)
         {
-            return response([], '20001');
+            if ($model->status < 1)
+            {
+                // 可编辑
+                $model->time_slot = $timeSlot;
+                $model->date = strtotime($date);
+                if ($model->save())
+                {
+                    return response();
+                }
+                else
+                {
+                    return response([], '20001');
+                }
+            }
+            else
+            {
+                return response([], '30030', '顾问已接单不能编辑。');
+            }
         }
 
         $model = new  AppointSeeHouse();
@@ -139,5 +185,28 @@ class SeeHouseController extends BaseController
             return response([], '20001');
         }
         return response();
+    }
+
+    /**
+     * 取消预约
+     * @return array
+     * @throws \Throwable
+     * @throws \yii\db\StaleObjectException
+     */
+    public function actionCancel()
+    {
+        $id = Yii::$app->request->get('appoint_see_room_id', 0);
+
+        $model = AppointSeeHouse::findOne([
+            'user_id' => $this->_userId,
+            'appoint_see_room_id' => $id,
+            'status' => '0',
+        ]);
+
+        if ($model->delete())
+        {
+            return response();
+        }
+        return response([], '20001');
     }
 }

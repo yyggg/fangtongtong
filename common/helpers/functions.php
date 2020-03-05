@@ -38,7 +38,7 @@ if (! function_exists('sendSms'))
         // 每种类型短信一天只能发5条
         if (Yii::$app->redis->get($redisIncrKey) >= 5)
         {
-            return false;
+            return ['code' => 1, 'msg' => '当天发送验证码已上限'];
         }
 
         $code = '';
@@ -84,18 +84,18 @@ if (! function_exists('sendSms'))
            $arr = xmlToArr($response);
            if ($arr['returnstatus'] === 'Success')
            {
-               return true;
+               Yii::$app->redis->set($redisKey, $code);
+               Yii::$app->redis->expire($redisKey, 180);
+
+               Yii::$app->redis->incr($redisIncrKey);
+               Yii::$app->redis->expire($redisIncrKey, strtotime('23:59:59')-time());
+
+               return ['code' => 0, 'msg' => ''];
            }
 
-
-           Yii::$app->redis->set($redisKey);
-           Yii::$app->redis->expire($redisKey, 60);
-
-           Yii::$app->redis->incr($redisIncrKey, 1);
-            Yii::$app->redis->expire($redisKey, strtotime('23:59:59')-time());
         }
 
-        return false;
+        return ['code' => 2, 'msg' => '发送短信失败。'];
     }
 
 }

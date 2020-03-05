@@ -3,6 +3,11 @@ return [
     'user.passwordResetTokenExpire' => 3600,
     'user.accessTokenExpire' => 86400*30,
 
+    'access_key' => 'XJ3bS34P6BvVfpRTrqtxbFJiHJ-K7Fd7Jt26Cfby',
+    'secret_key' => 'uLSOQIQwpjGgsqS8oHT88c2fLl4ij4MvgE7fWI-J',
+    'domain' => 'http://yhjm-cdn.yihuijumei.com/',
+    'bucket' => 'card',
+
     'errCode' => [
         '0' => ['errCode' => 0],
         '10001' => ['errCode' => 10001, 'errMsg' => '无数据'],
@@ -16,6 +21,7 @@ return [
 
     'pageSize' => 15,
     'sale_status' => ['售罄', '在售', '待售'],
+    'rough' => ['毛坯', '带装', '精装'],
     'down_payment_name' => ['零首付', '10万首付', '20万首付', '30万首付', '其他'],
     'property_type_name' => ['不限', '住宅', '别墅', '商业', '商铺', '写字楼'],
     'house_type' => ['不限', '一室', '二室', '三室', '四室', '五室以上'],
@@ -59,7 +65,7 @@ return [
     ],
     'notice_category' => ['系统通知', '分销消息通知', '奖励通知'],
     'sub_notice_category' => [
-        ['公告', '升级顾问审核通知'],
+        ['公告', '升级顾问审核通知', '提现到账通知'],
         ['分销审核成功提醒', '分销核对通知提醒', '佣金到账通知'],
         ['任务奖励领取通知', '任务完成通知'],
     ],

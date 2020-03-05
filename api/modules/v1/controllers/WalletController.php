@@ -10,6 +10,7 @@ namespace api\modules\v1\controllers;
 use api\controllers\BaseController;
 use common\models\Wallet;
 use common\models\WalletLogs;
+use common\models\Withdraw;
 use Yii;
 
 class WalletController extends BaseController
@@ -83,6 +84,12 @@ class WalletController extends BaseController
             return response([], '30030', '余额不足。');
         }
 
+        // 提现表
+        $withdraw = new Withdraw();
+        $withdraw->user_id = $this->_userId;
+        $withdraw->amount = $money;
+
+        // 钱包日志
         $logModel = new WalletLogs();
         $logModel->user_id = $this->_userId;
         $logModel->type = 1;
@@ -93,6 +100,7 @@ class WalletController extends BaseController
         try {
             // 插入记录
             $logModel->save();
+            $withdraw->save();
             // 更新用户钱包
             $walletModel =  Wallet::findOne(['user_id' => $this->_userId]);
             $walletModel->account -= $money;
