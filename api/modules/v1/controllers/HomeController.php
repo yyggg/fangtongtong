@@ -51,7 +51,7 @@ class HomeController extends BaseController
             $data[$v['down_payment_id']][] = $v;
         }
 
-        response($data);
+         return response($data);
     }
 
 }
