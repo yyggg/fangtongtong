@@ -13,6 +13,7 @@ use common\models\InviteReg;
 use common\models\Properties;
 use common\models\PropertiesAdviserRelation;
 use common\models\PropertiesAnswers;
+use common\models\PropertiesDistribution;
 use common\models\PropertiesLabel;
 use common\models\PropertiesLabelRelation;
 use common\models\Region;
@@ -368,7 +369,7 @@ class UserController extends BaseController
     /**
      * 我的分销信息
      * @return array
-     */
+    */
     public function actionDistribution()
     {
         $page          = Yii::$app->request->post('page', 1); // 页码
@@ -407,6 +408,49 @@ class UserController extends BaseController
         }
 
         return response($model);
+    }
+
+    /**
+     * 我的分销（现在用这个）
+     *
+     * @return array
+     */
+    public function actionDist()
+    {
+        $data = [];
+
+        $type = Yii::$app->request->get('type', 0);
+        switch ($type) {
+            case 1:
+                $type = 'trans_status';
+                break;
+            case 2:
+                $type = 'commission_status';
+                break;
+            default:
+                $type = 'visit_status';
+        }
+
+        foreach (Yii::$app->params[$type] as $k => $v) {
+            if ($k == 0) continue;
+            $data[$type][$k]['name'] = $v;
+            $data[$type][$k]['count'] = 0;
+        }
+
+        $model = PropertiesDistribution::find()
+            ->select($type . ',COUNT('. $type .') count')
+            ->where(['user_id' => $this->_userId])
+            ->groupBy($type)
+            ->asArray()
+            ->all();
+
+        foreach ($model as $v) {
+            if (isset($data[$type][$v[$type]])) {
+                $data[$type][$v[$type]]['count'] = $v['count'];
+            }
+        }
+
+        return response($data);
     }
 
     /**

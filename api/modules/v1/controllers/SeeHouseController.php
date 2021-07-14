@@ -29,7 +29,10 @@ class SeeHouseController extends BaseController
                 'a.appoint_see_room_id',
                 'a.status',
                 'a.date',
-                'a.time_slot',
+                'a.idcard',
+                'a.phone',
+                'a.name as username',
+                'a.remark',
                 'b.name',
                 'b.address'
             ])
@@ -59,7 +62,11 @@ class SeeHouseController extends BaseController
             ->select([
                 'a.status',
                 'a.date',
-                'a.time_slot',
+                'a.idcard',
+                'a.phone',
+                'a.address',
+                'a.name as username',
+                'a.remark',
                 'b.name',
                 'b.pic',
                 'b.price_metre',
@@ -114,7 +121,7 @@ class SeeHouseController extends BaseController
         $propertiesId = Yii::$app->request->get('properties_id', 0);
         $model = AppointSeeHouse::find()
             ->select([
-                'appoint_see_room_id','properties_id','time_slot','date','status'
+                'appoint_see_room_id','properties_id','idcard','address','date','status','phone','name','remark'
             ])
             ->where([
                 'properties_id' => $propertiesId,
@@ -136,16 +143,22 @@ class SeeHouseController extends BaseController
     public function actionCreate()
     {
         $propertiesId = Yii::$app->request->post('properties_id', 0);
-        $userId = Yii::$app->request->post('user_id', 0);
+        $userId = $this->_userId;
         $houseTypeId = Yii::$app->request->post('house_type_id', 0);
-        $timeSlot = Yii::$app->request->post('time_slot', '');
+        $idcard = Yii::$app->request->post('idcard', '');
+        $idcard = substr($idcard, -6);
+        $phone = Yii::$app->request->post('phone', '');
+        $name = Yii::$app->request->post('name', '');
+        $remark = Yii::$app->request->post('remark', '');
         $date = Yii::$app->request->post('date', '');
+        $address = Yii::$app->request->post('address', '');
 
         // 是否已经有预约过
         $model = AppointSeeHouse::find()
             ->where([
                 'properties_id' => $propertiesId,
-                'user_id' => $userId
+                'user_id' => $userId,
+                'phone' => $phone
             ])
             ->andWhere(['<', 'status', 2])
             ->one();
@@ -155,7 +168,9 @@ class SeeHouseController extends BaseController
             if ($model->status < 1)
             {
                 // 可编辑
-                $model->time_slot = $timeSlot;
+                $model->name = $name;
+                $model->idcard = $idcard;
+                $model->remark = $remark;
                 $model->date = strtotime($date);
                 if ($model->save())
                 {
@@ -176,13 +191,17 @@ class SeeHouseController extends BaseController
         $model->properties_id = $propertiesId;
         $model->house_type_id = $houseTypeId;
         $model->user_id = $userId;
-        $model->time_slot = $timeSlot;
+        $model->name = $name;
+        $model->phone = $phone;
+        $model->idcard = $idcard;
+        $model->remark = $remark;
+        $model->address = $address;
         $model->date = strtotime($date);
         $model->create_time = time();
 
-        if (!$model->save())
+        if (!$model->save(false))
         {
-            return response([], '20001');
+            return response([], '20001', '预约提交失败');
         }
         return response();
     }

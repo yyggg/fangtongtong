@@ -52,7 +52,12 @@ class BaseController extends Controller
 
         $behaviors['authenticator'] = [
             'class' => HttpBearerAuth::className(),
-            'optional' => ['login','logout','signup', 'send-sms'], //不用授权方法
+            'optional' => [
+                'login',
+                'logout',
+                'signup',
+                'send-sms'
+            ], //不用授权方法
         ];
 
         return $behaviors;

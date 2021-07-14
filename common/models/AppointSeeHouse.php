@@ -34,7 +34,7 @@ class AppointSeeHouse extends Base
     {
         return [
             [['user_id', 'house_type_id', 'properties_id', 'adviser_id', 'date','create_time', 'status'], 'integer'],
-            [['time_slot'], 'string'],
+            [['idcard','name', 'phone','remark'], 'string'],
         ];
     }
 
@@ -50,7 +50,7 @@ class AppointSeeHouse extends Base
             'properties_id' => 'Properties ID',
             'adviser_id' => 'Adviser ID',
             'date' => 'Date',
-            'time_slot' => 'Time Slot',
+            'idcard' => '身份证后6位',
             'status' => 'Status',
             'create_time' => 'Create Time',
         ];

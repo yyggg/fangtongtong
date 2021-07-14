@@ -31,6 +31,7 @@ class PropertiesAsk extends Base
         return [
             [['properties_id', 'ask_user_id', 'create_time'], 'integer'],
             [['title'], 'string', 'max' => 255],
+            ['create_time', 'default', 'value' => time()]
         ];
     }
 

@@ -12,6 +12,7 @@ use common\models\RewardLogs;
 use common\models\Task;
 use common\models\TaskReward;
 use Yii;
+use yii\filters\auth\HttpBearerAuth;
 
 class RewardController extends BaseController
 {

@@ -42,7 +42,7 @@ class SubscribeController extends BaseController
             ])
             ->leftJoin(Properties::tableName() . ' b', 'a.properties_id = b.properties_id')
             ->leftJoin(HouseType::tableName() . ' c', 'b.properties_id = c.properties_id')
-            ->where(['a.user_id' => $this->_userId])
+            ->where(['a.user_id' => $this->_userId, 'a.status' => 1])
             ->groupBy('a.properties_id')
             ->orderBy('a.subscribe_properties_id desc')
             ->offset($offset)
@@ -62,6 +62,34 @@ class SubscribeController extends BaseController
         }
 
         return response($model);
+    }
+
+    /**
+     * 关注楼盘
+     * @return array
+     */
+    public function actionSubProperties() {
+        $propertiesId = Yii::$app->request->post('properties_id', 0);
+        if ($propertiesId) {
+            $model = SubscribeProperties::findOne(['properties_id' => $propertiesId, 'user_id' => $this->_userId]);
+            if (!$model) {
+                $model = new SubscribeProperties();
+                $model->user_id = $this->_userId;
+                $model->status = 1;
+                $model->properties_id = $propertiesId;
+                $model->save(false);
+            }
+            else {
+            	if($model->status == 0) {
+            		$model->status = 1;
+            	}else {
+            		$model->status = 0;	
+            	}
+                $model->save(false);
+            }
+        }
+
+        return response();
     }
 
     /**

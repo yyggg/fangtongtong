@@ -29,7 +29,8 @@ class SubscribeProperties extends Base
     public function rules()
     {
         return [
-            [['properties_id', 'user_id', 'status', 'create_time'], 'integer'],
+            [['properties_id', 'user_id', 'status'], 'integer'],
+            ['create_time', 'default', 'value' => time()]
         ];
     }
 
